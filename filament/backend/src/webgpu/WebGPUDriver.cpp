@@ -158,6 +158,9 @@ void WebGPUDriver::terminate() {
 }
 
 void WebGPUDriver::tick(int) {
+    std::stringstream ss;
+    ss << std::this_thread::get_id();
+    utils::slog.e <<"tick thread=" << ss.str() << utils::io::endl;
 #if !defined(__EMSCRIPTEN__)
     mDevice.Tick();
     mAdapter.GetInstance().ProcessEvents();
@@ -1763,7 +1766,7 @@ void WebGPUDriver::readTextureToBuffer(wgpu::Texture srcTexture, uint32_t level,
     // pending to be submitted.
     mQueueManager.flush();
     userData->buffer.MapAsync(
-            wgpu::MapMode::Read, 0, bufferSize, wgpu::CallbackMode::AllowProcessEvents,
+            wgpu::MapMode::Read, 0, bufferSize, wgpu::CallbackMode::AllowSpontaneous,
             [](wgpu::MapAsyncStatus status, wgpu::StringView message, UserData* userdata) {
                 std::unique_ptr<UserData> data(static_cast<UserData*>(userdata));
                 if (UTILS_LIKELY(status == wgpu::MapAsyncStatus::Success)) {
@@ -1787,7 +1790,7 @@ void WebGPUDriver::readTextureToBuffer(wgpu::Texture srcTexture, uint32_t level,
                                     data->unpaddedBytesPerRow);
                         }
                     }
-                    data->buffer.Unmap();
+                    //data->buffer.Unmap();
                 } else {
                     FWGPU_LOGE << "Failed to map staging buffer: " << std::string_view(message);
                 }

@@ -33,12 +33,14 @@
 #include <thread>
 #include <utility>
 
-#include "dawn/common/Assert.h"
-#include "dawn/common/Compiler.h"
-#include "dawn/common/NonCopyable.h"
-#include "dawn/common/NonMovable.h"
-#include "dawn/common/Ref.h"
-#include "dawn/common/RefCounted.h"
+#include "src/dawn/common/Compiler.h"
+#include "src/dawn/common/Ref.h"
+#include "src/dawn/common/RefCounted.h"
+#include "src/utils/assert.h"
+#include "src/utils/non_copyable.h"
+#include "src/utils/non_movable.h"
+
+#include <iostream>
 
 namespace dawn {
 
@@ -94,10 +96,12 @@ class DAWN_MUTEX_CAPABILITY MutexBase : public RefCounted, NonCopyable {
     // i.e. DAWN_ASSERT(mutex.IsLockedByCurrentThread())
     bool IsLockedByCurrentThread() {
 #if defined(DAWN_ENABLE_ASSERTS)
+        std::cerr <<"this=" << this << " [is lock] owner=" << mOwner.load(std::memory_order_acquire)
+                  << " thread=" << std::this_thread::get_id() << std::endl;
         return mOwner.load(std::memory_order_acquire) == std::this_thread::get_id();
 #else
         // This is not supported.
-        DAWN_CHECK(false);
+        DAWN_UNREACHABLE();
 #endif
     }
 
@@ -114,12 +118,19 @@ class DAWN_MUTEX_CAPABILITY MutexBase : public RefCounted, NonCopyable {
 
 #if defined(DAWN_ENABLE_ASSERTS)
         mRecursionStackDepth++;
+        std::cerr <<"this=" << this << " [lock] owner=" << mOwner.load(std::memory_order_acquire)
+                  << " thread=" << currentThread
+                  << " depth=" <<  mRecursionStackDepth << std::endl;                
         mOwner.store(currentThread, std::memory_order_release);
 #endif  // DAWN_ENABLE_ASSERTS
     }
 
     void Unlock() DAWN_UNLOCK_FUNCTION {
 #if defined(DAWN_ENABLE_ASSERTS)
+        std::cerr <<"this=" << this << " [unlock] owner=" << mOwner.load(std::memory_order_acquire)
+                  << " thread=" << std::this_thread::get_id()
+                  << " depth=" <<  mRecursionStackDepth << std::endl;                
+        
         DAWN_ASSERT(IsLockedByCurrentThread());
         if (--mRecursionStackDepth == 0) {
             mOwner.store(std::thread::id(), std::memory_order_release);
